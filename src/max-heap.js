@@ -16,11 +16,13 @@ class MaxHeap {
     if (this.isEmpty()) {
       return;
     }
-    const oldRoot = this.root;
-    const detached = detachRoot();
-    restoreRootFromLastInsertedNode(detached);
-    shiftNodeDown(this.root);
-    return oldRoot.data;
+    const detached = this.detachRoot();
+
+    if (this.parentNodes.length) {
+      this.restoreRootFromLastInsertedNode(detached);
+      this.shiftNodeDown(this.root);
+    }
+    return detached.data;
   }
 
   detachRoot() {
@@ -32,22 +34,24 @@ class MaxHeap {
     if (root.right) {
       root.right.parent = null;
     }
-
     return root.right ? root : this.parentNodes.shift();
   }
 
   restoreRootFromLastInsertedNode(detached) {
     const lastInsertedNode = this.parentNodes.pop();
     const lastInsertedParent = lastInsertedNode.parent;
-    const isLastRight = lastInsertedParent.right === lastInsertedNode;
+    const isLastRight =
+      lastInsertedParent && lastInsertedParent.right === lastInsertedNode;
+
     lastInsertedNode.remove();
 
-    // lastInsertedNode.left = detached.left;
-    // lastInsertedNode.right = detached.right;
-    // detached.left.parent = lastInsertedNode;
-    // detached.right.parent = lastInsertedNode;
-    detached.left && lastInsertedNode.appendChild(detached.left);
-    detached.right && lastInsertedNode.appendChild(detached.right);
+    detached.left &&
+      detached.left !== lastInsertedNode &&
+      lastInsertedNode.appendChild(detached.left);
+
+    detached.right &&
+      detached.right !== lastInsertedNode &&
+      lastInsertedNode.appendChild(detached.right);
 
     this.root = lastInsertedNode;
 
@@ -55,7 +59,7 @@ class MaxHeap {
       this.parentNodes.unshift(lastInsertedParent);
     }
 
-    if (this.root.left || this.root.right) {
+    if (!this.root.right) {
       this.parentNodes.unshift(this.root);
     }
   }
@@ -113,27 +117,40 @@ class MaxHeap {
     }
   }
 
-  shiftNodeDown(node) {}
+  shiftNodeDown(node) {
+    const comparator = (a, b) => (a.priority > b.priority ? a : b);
+
+    const maxChild =
+      node.left !== null
+        ? node.right !== null
+          ? comparator(node.left, node.right)
+          : node.left
+        : node.right !== null
+        ? node.right
+        : null;
+
+    if (!maxChild || maxChild.priority < node.priority) {
+      return;
+    }
+
+    const myIndex = this.parentNodes.indexOf(node);
+    const childIndex = this.parentNodes.indexOf(maxChild);
+
+    if (myIndex !== -1 && childIndex !== -1) {
+      this.parentNodes.splice(myIndex, 1, maxChild);
+      this.parentNodes.splice(childIndex, 1, node);
+    } else if (myIndex === -1 && childIndex !== -1) {
+      this.parentNodes.splice(childIndex, 1, node);
+    }
+
+    maxChild.swapWithParent();
+
+    if (node === this.root) {
+      this.root = maxChild;
+    }
+
+    this.shiftNodeDown(node);
+  }
 }
-
-h = new MaxHeap();
-h.push(42, 15); // left
-h.push(14, 32); // root
-h.push(0, 0); // right
-
-const lastInsertedNode = h.root.right;
-console.log("lastInsertedNode:", lastInsertedNode.priority);
-
-const left = h.root.left;
-console.log("left:", left.priority);
-
-console.log("!!!!!!!!!!!!!!111 h before detached", h);
-const detached = h.detachRoot();
-console.log("root:", detached.priority);
-console.log("!!!!!!!!!!!!!!111 h after detached", h);
-
-h.restoreRootFromLastInsertedNode(detached);
-
-console.log("-----> new heap", h);
 
 module.exports = MaxHeap;
